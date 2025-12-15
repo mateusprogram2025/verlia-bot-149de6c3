@@ -2,36 +2,40 @@ import discord
 from discord.ext import commands
 import os
 
+# Importando os cogs
+from commands.moderation import Moderation
+
+# Configuração do bot
 intents = discord.Intents.default()
-intents.members = True
 intents.message_content = True
+intents.members = True # Necessário para funções de moderação, como ban e unban
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.event
-async def on_ready():
-    print(f'Bot conectado como {bot.user} (ID: {bot.user.id})')
-    print('------')
-    try:
-        synced = await bot.tree.sync()
-        print(f"Sincronizados {len(synced)} comandos de barra.")
-    except Exception as e:
-        print(f"Falha ao sincronizar comandos de barra: {e}")
-
-@bot.hybrid_command(name="ping", description="Verifica a latência do bot.")
-async def ping(ctx: commands.Context):
-    latency_ms = round(bot.latency * 1000)
-    await ctx.send(f'Pong! 🏓 Latência: `{latency_ms}ms`')
-
-async def load_cogs():
-    try:
-        await bot.load_extension('commands.moderation')
-        print("Módulo 'commands.moderation' carregado com sucesso.")
-    except Exception as e:
-        print(f"Erro ao carregar o módulo 'commands.moderation': {e}")
+async async def on_ready():
+    print(f'✅ Bot conectado como {bot.user}')
+    print(f'📊 Servidores: {len(bot.guilds)}')
+    
+    # Carregar os cogs
+    await bot.add_cog(Moderation(bot))
+    
+    await bot.tree.sync()  # Sincroniza slash commands
 
 @bot.event
-async def on_connect():
-    await load_cogs()
+async async def on_command_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("Você não tem permissão para usar este comando.", ephemeral=True)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Faltam argumentos para este comando. Verifique a sintaxe.", ephemeral=True)
+    elif isinstance(error, commands.CommandNotFound):
+        # Ignora comandos não encontrados
+        pass
+    else:
+        print(f"Erro inesperado: {error}")
+        await ctx.send(f"Ocorreu um erro inesperado: {error}", ephemeral=True)
 
+# ═══════════════════════════════════════════
+# 🔌 CONEXÃO DO BOT - NUNCA REMOVA ESTA LINHA
+# ═══════════════════════════════════════════
 bot.run(os.environ.get('BOT_TOKEN'))
